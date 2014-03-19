@@ -9,7 +9,7 @@ from pprint import pprint  # Only used for this dummy example
 from BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
 
 
-WEBHOOK_NAME = 'untitled'  # Please give your webhook a name
+WEBHOOK_NAME = 'repocopy'
 
 
 class Webhook(BaseHTTPRequestHandler):
