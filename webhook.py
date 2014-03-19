@@ -5,6 +5,7 @@ import argparse
 import json
 import logging
 import logging.handlers
+from pprint import pprint  # Only used for this dummy example
 from BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
 
 
@@ -31,7 +32,7 @@ class Webhook(BaseHTTPRequestHandler):
         data = json.loads(data_string)
 
         # Process here sent data
-        print data
+        pprint(data)
 
     def log_message(self, formate, *args):
         """
@@ -47,10 +48,13 @@ if __name__ == '__main__':
     # Prepare settings
     default_port = 8000  # Webhook server port
     default_log_max_size = 50 * 1048576  # 50 MB
-    default_log_level = logging.INFO
     default_backup_count = 4  # Number of historical data logs
 
+    parser.add_argument('-p', '--port', help='Server port ({} will be used by default)'.format(default_port), default=default_port, type=int)
     parser.add_argument('-l', '--log', help='Specify a log file otherwise stdout will be used', required=False)
+    parser.add_argument('--log-level', help='Logging level (INFO by default)', default=logging.INFO)
+    parser.add_argument('--log-max-size', help='Log max size ({} bytes by default)'.format(default_log_max_size), default=default_log_max_size)
+    parser.add_argument('--log-backup-count', help='Number of historical data logs ({} by default)'.format(default_backup_count), default=default_backup_count)
 
     args = parser.parse_args()
 
@@ -69,8 +73,8 @@ if __name__ == '__main__':
 
     # Launch server
     try:
-        server = HTTPServer(('', args.server_port), Webhook)
-        log.info('Starting webhook server ({})...'.format(WEBHOOK_NAME))
+        server = HTTPServer(('', args.port), Webhook)
+        log.info('Starting webhook server ({}) on port {}...'.format(WEBHOOK_NAME, args.port))
         server.serve_forever()
     except KeyboardInterrupt:
         log.info('CTRL-C pressed, closing webhook...')
