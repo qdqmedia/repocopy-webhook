@@ -3,6 +3,8 @@ Repocopy webhook
 
 Webhook to forward commit pushes to another git repository
 
+.. image :: https://raw.github.com/qdqmedia/repocopy-webhook/master/assets/diagram.png
+
 Getting started
 ----------------
 
