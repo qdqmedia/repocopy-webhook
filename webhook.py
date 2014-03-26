@@ -59,18 +59,42 @@ class Webhook(BaseHTTPRequestHandler):
         # parse data
         self.data = json.loads(data_string)
 
+        # Processes only posts from REPO_FROM
         if self.data['repository']['url'] == REPO_FROM:
+
+            # Get git repo instance
             tmp_repo = self._get_tmp_repo()
             self._ensure_remotes(tmp_repo)
+
+            # The name of the current branch involved in the "push"
             commit_branch = self.data['ref'].rsplit('/', 1)[1]
-            log.info('Copying {} commits ({} branch) from {} to {}'.format(self.data['total_commits_count'], commit_branch, REPO_FROM, REPO_TO))
+
+            # Update remote branches
             tmp_repo.git.fetch(all=True)
-            if commit_branch not in [b.name for b in tmp_repo.branches]:
-                tmp_repo.git.checkout(b=commit_branch)
+
+            if commit_branch in tmp_repo.remote().stale_refs:
+                # Branch deleted, we need to remove it both locally and remote (in "destiny" remote)
+                head_to_delete = ([e for e in tmp_repo.heads if e.name == commit_branch] or [None])[0]
+                eligible_heads = set(tmp_repo.heads) - set([head_to_delete])
+                if head_to_delete:
+                    if tmp_repo.active_branch == head_to_delete:
+                        tmp_repo.git.checkout(eligible_heads.pop())
+
+                    log.info('Deleting local branch ({})'.format(head_to_delete.name))
+                    tmp_repo.delete_head(head_to_delete, force=True)
+
+                    log.info('Deleting remote branch ({}) in destiny'.format(head_to_delete.name))
+                    tmp_repo.git.push('destiny', commit_branch, delete=True)
             else:
-                tmp_repo.git.checkout(commit_branch)
-            tmp_repo.git.pull('origin', commit_branch)
-            tmp_repo.git.push('destiny', commit_branch)
+                # Branch pushed normal (create local branch if needed)
+                if commit_branch not in [b.name for b in tmp_repo.branches]:
+                    tmp_repo.git.checkout(b=commit_branch)
+                else:
+                    tmp_repo.git.checkout(commit_branch)
+                log.info('Copying {} commits ({} branch) from {} to {}'.format(self.data['total_commits_count'],
+                                                                               commit_branch, REPO_FROM, REPO_TO))
+                tmp_repo.git.pull('origin', commit_branch)
+                tmp_repo.git.push('destiny', commit_branch, force=True)
 
     def log_message(self, formate, *args):
         """
