@@ -13,7 +13,7 @@ Getting started
     $ git clone git@github.com:qdqmedia/repocopy-webhook.git
     $ cd repocopy-webhook
     $ ./webhook.py --repo-from git@server1:project.git --repo-to git@server2:project.git
-
+    March 26 16:52:08 webhook.py INFO Starting webhook server (repocopy) on port 8000...
 
 Command line options
 --------------------
