@@ -10,7 +10,7 @@ Getting started
 
     $ git clone git@github.com:qdqmedia/repocopy-webhook.git
     $ cd repocopy-webhook
-    $ ./webhook.py --repo-from git@oldserver:project.git --repo-to git@newserver:project.git
+    $ ./webhook.py --repo-from git@server1:project.git --repo-to git@server2:project.git
 
 
 Command line options
