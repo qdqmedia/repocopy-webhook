@@ -132,7 +132,7 @@ if __name__ == '__main__':
     if args.log:
         log_handler = logging.handlers.RotatingFileHandler(args.log,
                                                            maxBytes=args.log_max_size,
-                                                           backupCount=args.backup_count)
+                                                           backupCount=args.log_backup_count)
     else:
         log_handler = logging.StreamHandler(sys.stdout)
     f = logging.Formatter("%(asctime)s %(filename)s %(levelname)s %(message)s",
