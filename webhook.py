@@ -130,7 +130,7 @@ if __name__ == '__main__':
     log = logging.getLogger('webhook_log')
     log.setLevel(args.log_level)
     if args.log:
-        log_handler = logging.handlers.RotatingFileHandler(args.log_file,
+        log_handler = logging.handlers.RotatingFileHandler(args.log,
                                                            maxBytes=args.log_max_size,
                                                            backupCount=args.backup_count)
     else:
