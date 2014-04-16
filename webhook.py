@@ -7,6 +7,7 @@ import json
 import logging
 import logging.handlers
 import git
+import urlparse
 from slugify import slugify
 from BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
 
@@ -15,6 +16,22 @@ WEBHOOK_NAME = 'repocopy'
 TEMP_DIR_ROOT = '/tmp/'
 REPO_FROM = ''
 REPO_TO = ''
+
+
+def old_gitlab_url_patch(url):
+    """
+    Gitlab's old versions give repo url in http format. We need it
+    in ssh format.
+    """
+
+    if url.startswith('http:'):
+        parsed_url = urlparse.urlparse(url)
+        ssh_url = 'git@' + parsed_url.netloc + ':' + parsed_url.path.strip('/')
+        if not ssh_url.endswith('.git'):
+            ssh_url += '.git'
+        return ssh_url
+    else:
+        return url
 
 
 class Webhook(BaseHTTPRequestHandler):
@@ -59,6 +76,9 @@ class Webhook(BaseHTTPRequestHandler):
 
         # parse data
         self.data = json.loads(data_string)
+
+        # Old Gitlab Patch
+        self.data['repository']['url'] = old_gitlab_url_patch(self.data['repository']['url'])
 
         # Processes only posts from REPO_FROM
         if self.data['repository']['url'] == REPO_FROM:
