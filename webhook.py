@@ -7,6 +7,7 @@ import json
 import logging
 import logging.handlers
 import git
+from slugify import slugify
 from BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
 
 
@@ -23,7 +24,7 @@ class Webhook(BaseHTTPRequestHandler):
         Returns the temporary repository to copy from one side to another
         """
 
-        repo_path = os.path.join(TEMP_DIR_ROOT, 'repocopy_' + self.data['repository']['name'])
+        repo_path = os.path.join(TEMP_DIR_ROOT, 'repocopy_' + slugify(self.data['repository']['name']))
         if os.path.exists(repo_path):
             return git.Repo(repo_path)
         else:

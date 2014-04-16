@@ -1,1 +1,2 @@
-gitpython
+GitPython==0.1.7
+awesome-slugify==1.4
