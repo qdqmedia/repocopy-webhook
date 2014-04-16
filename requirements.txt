@@ -1,2 +1,2 @@
-GitPython==0.1.7
+GitPython==0.3.2.RC1
 awesome-slugify==1.4
