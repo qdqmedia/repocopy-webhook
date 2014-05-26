@@ -1,6 +1,7 @@
 #!/usr/bin/python -tt
 
 import os
+import shutil
 import sys
 import argparse
 import json
@@ -42,11 +43,13 @@ class Webhook(BaseHTTPRequestHandler):
         """
 
         repo_path = os.path.join(TEMP_DIR_ROOT, 'repocopy_' + slugify(self.data['repository']['name']))
-        if os.path.exists(repo_path):
+        if HARD_COPY and os.path.exists(repo_path):
+            shutil.rmtree(repo_path)
+        elif os.path.exists(repo_path):
             return git.Repo(repo_path)
-        else:
-            os.mkdir(repo_path)
-            return git.Repo.init(repo_path)
+
+        os.mkdir(repo_path)
+        return git.Repo.init(repo_path)
 
     def _ensure_remotes(self, repo):
         """
@@ -135,6 +138,7 @@ if __name__ == '__main__':
 
     parser.add_argument('-p', '--port', help='Server port ({} will be used by default)'.format(default_port), default=default_port, type=int)
     parser.add_argument('-l', '--log', help='Specify a log file otherwise stdout will be used', required=False)
+    parser.add_argument('--hard', help='Always recreate repository (slower but safer)', action='store_true', default=False)
     parser.add_argument('--tmp-dir-root', help='Path where temporary repository will be created', required=False, default=TEMP_DIR_ROOT)
     parser.add_argument('--repo-from', help='Repo URL to copy from', required=True)
     parser.add_argument('--repo-to', help='Repo URL to copy to', required=True)
@@ -147,6 +151,7 @@ if __name__ == '__main__':
     TEMP_DIR_ROOT = args.tmp_dir_root
     REPO_FROM = args.repo_from
     REPO_TO = args.repo_to
+    HARD_COPY = args.hard
 
     log = logging.getLogger('webhook_log')
     log.setLevel(args.log_level)
