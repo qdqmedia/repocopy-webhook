@@ -26,6 +26,7 @@ Argument                 Description                                            
 ``--repo-to``            GIT Repository URL to copy to                                            Yes
 ``-p, --port``           Server port (8000 by default)                                            No
 ``-l, --log``            Path to log file (otherwise stdout will be used)                         No
+``--hard``               Always recreate temporary repository (slower but safer)                  No
 ``--log-level``          Logging level (INFO by default)                                          No
 ``--log-max-size``       Log max size (52428800 bytes by default)                                 No
 ``--log-backup-count``   Number of historical data logs (4 by default)                            No
