@@ -8,7 +8,6 @@ import json
 import logging
 import logging.handlers
 import git
-import urlparse
 from slugify import slugify
 from BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
 
@@ -19,29 +18,12 @@ REPO_FROM = ''
 REPO_TO = ''
 
 
-def old_gitlab_url_patch(url):
-    """
-    Gitlab's old versions give repo url in http format. We need it
-    in ssh format.
-    """
-
-    if url.startswith('http:'):
-        parsed_url = urlparse.urlparse(url)
-        ssh_url = 'git@' + parsed_url.netloc + ':' + parsed_url.path.strip('/')
-        if not ssh_url.endswith('.git'):
-            ssh_url += '.git'
-        return ssh_url
-    else:
-        return url
-
-
 class Webhook(BaseHTTPRequestHandler):
 
     def _get_tmp_repo(self):
         """
         Returns the temporary repository to copy from one side to another
         """
-
         repo_path = os.path.join(TEMP_DIR_ROOT, 'repocopy_' + slugify(self.data['repository']['name']))
         if HARD_COPY and os.path.exists(repo_path):
             shutil.rmtree(repo_path)
@@ -81,44 +63,42 @@ class Webhook(BaseHTTPRequestHandler):
         self.data = json.loads(data_string)
 
         # Old Gitlab Patch
-        self.data['repository']['url'] = old_gitlab_url_patch(self.data['repository']['url'])
+        self.data['repository']['url'] = REPO_FROM
 
-        # Processes only posts from REPO_FROM
-        if self.data['repository']['url'] == REPO_FROM:
+        # Get git repo instance
+        tmp_repo = self._get_tmp_repo()
+        self._ensure_remotes(tmp_repo)
 
-            # Get git repo instance
-            tmp_repo = self._get_tmp_repo()
-            self._ensure_remotes(tmp_repo)
+        # The name of the current branch involved in the "push"
+        commit_branch = self.data['ref'].rsplit('/', 1)[1]
 
-            # The name of the current branch involved in the "push"
-            commit_branch = self.data['ref'].rsplit('/', 1)[1]
+        # Update remote branches
+        tmp_repo.git.fetch(all=True)
 
-            # Update remote branches
-            tmp_repo.git.fetch(all=True)
+        if commit_branch in tmp_repo.remote().stale_refs:
+            # Branch deleted, we need to remove it both locally and remote (in "destiny" remote)
+            head_to_delete = ([e for e in tmp_repo.heads if e.name == commit_branch] or [None])[0]
+            eligible_heads = set(tmp_repo.heads) - set([head_to_delete])
+            if head_to_delete:
+                if tmp_repo.active_branch == head_to_delete:
+                    tmp_repo.git.checkout(eligible_heads.pop())
 
-            if commit_branch in tmp_repo.remote().stale_refs:
-                # Branch deleted, we need to remove it both locally and remote (in "destiny" remote)
-                head_to_delete = ([e for e in tmp_repo.heads if e.name == commit_branch] or [None])[0]
-                eligible_heads = set(tmp_repo.heads) - set([head_to_delete])
-                if head_to_delete:
-                    if tmp_repo.active_branch == head_to_delete:
-                        tmp_repo.git.checkout(eligible_heads.pop())
+                log.info('Deleting local branch ({})'.format(head_to_delete.name))
+                tmp_repo.delete_head(head_to_delete, force=True)
 
-                    log.info('Deleting local branch ({})'.format(head_to_delete.name))
-                    tmp_repo.delete_head(head_to_delete, force=True)
-
-                    log.info('Deleting remote branch ({}) in destiny'.format(head_to_delete.name))
-                    tmp_repo.git.push('destiny', commit_branch, delete=True)
+                log.info('Deleting remote branch ({}) in destiny'.format(head_to_delete.name))
+                tmp_repo.git.push('destiny', commit_branch, delete=True)
+        else:
+            # Branch pushed normal (create local branch if needed)
+            if commit_branch not in [b.name for b in tmp_repo.branches]:
+                tmp_repo.git.checkout(b=commit_branch)
             else:
-                # Branch pushed normal (create local branch if needed)
-                if commit_branch not in [b.name for b in tmp_repo.branches]:
-                    tmp_repo.git.checkout(b=commit_branch)
-                else:
-                    tmp_repo.git.checkout(commit_branch)
-                log.info('Copying {} commits ({} branch) from {} to {}'.format(self.data['total_commits_count'],
-                                                                               commit_branch, REPO_FROM, REPO_TO))
-                tmp_repo.git.pull('origin', commit_branch)
-                tmp_repo.git.push('destiny', commit_branch, force=True)
+                tmp_repo.git.checkout(commit_branch)
+            log.info('Copying {} commits ({} branch) from {} to {}'.format(
+                self.data['total_commits_count'],
+                commit_branch, REPO_FROM, REPO_TO))
+            tmp_repo.git.pull('origin', commit_branch)
+            tmp_repo.git.push('destiny', commit_branch, force=True)
 
     def log_message(self, formate, *args):
         """
